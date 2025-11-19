@@ -2,38 +2,45 @@ def call() {
 
     echo "------ OWASP Dependency Check: Installing Dependencies ------"
 
-    // Install backend dependencies
-    if (fileExists("backend/package.json")) {
-        dir("backend") {
+    nodejs('Node18') {   // <-- THIS IS REQUIRED
+
+        echo "Node Version:"
+        sh "node -v || true"
+
+        echo "NPM Version:"
+        sh "npm -v || true"
+
+        // Backend dependencies
+        if (fileExists("backend/package.json")) {
+            dir("backend") {
+                sh "npm install"
+            }
+        }
+
+        // Frontend dependencies
+        if (fileExists("frontend/package.json")) {
+            dir("frontend") {
+                sh "npm install"
+            }
+        }
+
+        // Root dependencies
+        if (fileExists("package.json")) {
             sh "npm install"
         }
-    }
 
-    // Install frontend dependencies
-    if (fileExists("frontend/package.json")) {
-        dir("frontend") {
-            sh "npm install"
-        }
-    }
+        echo "------ Running OWASP Dependency Check ------"
 
-    // Install root dependencies (if any)
-    if (fileExists("package.json")) {
-        sh "npm install"
-    }
+        dependencyCheck(
+            odcInstallation: 'OWASP',
+            additionalArguments: '''
+                --scan ./ \
+                --disableNodeAudit \
+                --format XML
+            ''',
+            outdir: './'
+        )
 
-    echo "------ Running OWASP Dependency Check via Plugin ------"
-
-    dependencyCheck(
-        odcInstallation: 'OWASP',
-        additionalArguments: '''
-            --scan ./ \
-            --disableNodeAudit \
-            --format XML
-        ''',
-        outdir: './'
-    )
-
-    echo "------ Publishing OWASP Dependency Check Report ------"
-
-    dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+        dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+    } // END nodejs block
 }
